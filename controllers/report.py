@@ -11,6 +11,17 @@ class LookerReportController(http.Controller):
         if not report.exists():
             return request.not_found()
         
+        # Get Group By Field Label (default to Stage if not set)
+        effective_group_field = report.group_field or 'stage_id'
+        group_field_label = 'Giai đoạn'  # Default label for stage_id
+        
+        field_info = request.env['ir.model.fields'].sudo().search([
+            ('model', '=', 'crm.lead'),
+            ('name', '=', effective_group_field)
+        ], limit=1)
+        if field_info:
+            group_field_label = field_info.field_description or effective_group_field
+        
         # Get Data (time filter is handled in model)
         kpi_data = report.get_kpi_data()
         chart_data = report.get_chart_data()
@@ -20,13 +31,13 @@ class LookerReportController(http.Controller):
         funnel_data = report.get_funnel_data()
         lost_reason_data = report.get_lost_reason_data()
         pipeline_data = report.get_pipeline_by_stage_data()
-        salesperson_data = report.get_salesperson_performance()
         win_loss_trend = report.get_win_loss_trend()
         source_data = report.get_source_analysis()
         deal_metrics = report.get_deal_metrics()
 
         context = {
             'report': report,
+            'group_field_label': group_field_label,
             'kpi': kpi_data,
             'detail_data': detail_data,
             'labels_json': json.dumps(chart_data.get('labels', [])),
@@ -48,11 +59,6 @@ class LookerReportController(http.Controller):
             'pipeline_data': pipeline_data,
             'pipeline_labels_json': json.dumps(pipeline_data.get('labels', [])),
             'pipeline_revenues_json': json.dumps(pipeline_data.get('revenues', [])),
-            # Salesperson data
-            'salesperson_data': salesperson_data,
-            'sp_labels_json': json.dumps(salesperson_data.get('labels', [])),
-            'sp_revenues_json': json.dumps(salesperson_data.get('revenues', [])),
-            'sp_win_rates_json': json.dumps(salesperson_data.get('win_rates', [])),
             # Win/Loss trend
             'trend_data': win_loss_trend,
             'trend_labels_json': json.dumps(win_loss_trend.get('labels', [])),

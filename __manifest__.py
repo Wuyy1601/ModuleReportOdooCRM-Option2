@@ -1,6 +1,6 @@
 {
     'name': 'Looker Studio Reports',
-    'version': '3.2.0',
+    'version': '3.5.0',
     'summary': 'Advanced CRM Analytics & Reporting Dashboard',
     'description': '''
         Comprehensive CRM reporting module with:
@@ -8,8 +8,7 @@
         - Lost Reason Analysis (Pie Chart)
         - Pipeline Value by Stage
         - Win/Loss Trend over Time
-        - Top Salesperson Performance & Leaderboard
-        - Average Deal Size & Sales Cycle Metrics
+        - Average Deal Size Metrics
         - Revenue by Source Analysis
         - Detailed Data Tables with Filtering
     ''',

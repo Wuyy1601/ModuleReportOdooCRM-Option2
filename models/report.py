@@ -50,12 +50,6 @@ class LookerReport(models.Model):
     @api.depends('group_field', 'value_field', 'domain', 'time_filter', 'chart_type')
     def _compute_description(self):
         for rec in self:
-            # If user manually edited description, we might want to keep it?
-            # But compute with store=True usually overwrites unless we check context or something.
-            # For simplicity, let's auto-generate. If user wants custom, they can edit, but it might be overwritten on change.
-            # To allow manual override that persists, we'd need a flag or check if value matches auto-generated.
-            # Let's just auto-generate for now as requested "thêm cho t mô tả phù hợp với code".
-            
             def label(field):
                 if not field:
                     return ''
@@ -63,8 +57,10 @@ class LookerReport(models.Model):
                 return (f.field_description if f and f.field_description else field)
             
             time_label = dict(self._fields['time_filter'].selection).get(rec.time_filter, 'thời gian')
-            group_label = label(rec.group_field)
-            value_label = label(rec.value_field) if rec.value_field else 'Số lượng'
+            # Default to stage_id if no group_field
+            group_label = label(rec.group_field) if rec.group_field else 'Giai đoạn'
+            # Default to expected_revenue if no value_field  
+            value_label = label(rec.value_field) if rec.value_field else 'Doanh thu dự kiến'
             
             desc = ""
             if rec.chart_type == 'pie':
@@ -73,6 +69,8 @@ class LookerReport(models.Model):
                 desc = f"Biểu đồ cột so sánh {value_label} giữa các {group_label}."
             elif rec.chart_type == 'line':
                 desc = f"Biểu đồ đường thể hiện xu hướng biến động của {value_label} theo {time_label}."
+            else:
+                desc = f"Phân tích {value_label} theo {group_label} trong {time_label}."
             
             if rec.domain:
                 desc += " (Dữ liệu đã được lọc)."
@@ -175,6 +173,7 @@ class LookerReport(models.Model):
 
         Returns a dict with keys: labels, count_values, sum_values, line_labels, line_values.
         Always returns lists (never None) to simplify template handling.
+        If no group_field is set, defaults to grouping by stage_id for standard CRM analysis.
         """
         self.ensure_one()
         Model = self.env['crm.lead']
@@ -188,54 +187,47 @@ class LookerReport(models.Model):
         count_values = []
         sum_values = []
 
+        # Use group_field if set, otherwise default to stage_id for standard CRM report
+        effective_group_field = self.group_field or 'stage_id'
+
         try:
-            if self.group_field:
-                try:
-                    groups = Model.read_group(domain, [self.group_field], [self.group_field], lazy=False)
-                except Exception:
-                    _logger.exception('read_group(groups) failed for report %s', self.id)
-                    groups = []
+            try:
+                groups = Model.read_group(domain, [effective_group_field], [effective_group_field], lazy=False)
+            except Exception:
+                _logger.exception('read_group(groups) failed for report %s', self.id)
+                groups = []
 
-                sum_map = {}
-                if self.value_field:
-                    try:
-                        grp_sum = Model.read_group(domain, [self.group_field, self.value_field], [self.group_field], lazy=False)
-                    except Exception:
-                        _logger.exception('read_group(sum) failed for report %s', self.id)
-                        grp_sum = []
-                    for g in grp_sum:
-                        key = g.get(self.group_field)
-                        gid = key[0] if isinstance(key, (list, tuple)) else key
-                        sum_map[gid] = g.get(self.value_field) or 0.0
+            sum_map = {}
+            # Default to expected_revenue if no value_field set
+            effective_value_field = self.value_field or 'expected_revenue'
+            try:
+                grp_sum = Model.read_group(domain, [effective_group_field, effective_value_field], [effective_group_field], lazy=False)
+            except Exception:
+                _logger.exception('read_group(sum) failed for report %s', self.id)
+                grp_sum = []
+            for g in grp_sum:
+                key = g.get(effective_group_field)
+                gid = key[0] if isinstance(key, (list, tuple)) else key
+                sum_map[gid] = g.get(effective_value_field) or 0.0
 
-                group_entries = []
-                for g in groups:
-                    key = g.get(self.group_field)
-                    gid = key[0] if isinstance(key, (list, tuple)) else key
-                    lbl = key[1] if isinstance(key, (list, tuple)) and len(key) > 1 else (key or 'Undefined')
-                    cnt = g.get('__count', 0)
-                    sval = sum_map.get(gid, cnt if not self.value_field else 0.0)
-                    group_entries.append({'gid': gid, 'label': str(lbl), 'count': cnt, 'sum': float(sval)})
+            group_entries = []
+            for g in groups:
+                key = g.get(effective_group_field)
+                gid = key[0] if isinstance(key, (list, tuple)) else key
+                lbl = key[1] if isinstance(key, (list, tuple)) and len(key) > 1 else (key or 'Không xác định')
+                cnt = g.get('__count', 0)
+                sval = sum_map.get(gid, 0.0)
+                group_entries.append({'gid': gid, 'label': str(lbl), 'count': cnt, 'sum': float(sval)})
 
-                limit_n = int(self.limit) if getattr(self, 'limit', 0) and int(self.limit) > 0 else 0
-                if limit_n and len(group_entries) > limit_n:
-                    sort_key = 'sum' if self.value_field else 'count'
-                    group_entries = sorted(group_entries, key=lambda x: x[sort_key], reverse=True)[:limit_n]
+            limit_n = int(self.limit) if getattr(self, 'limit', 0) and int(self.limit) > 0 else 0
+            if limit_n and len(group_entries) > limit_n:
+                sort_key = 'sum' if self.value_field else 'count'
+                group_entries = sorted(group_entries, key=lambda x: x[sort_key], reverse=True)[:limit_n]
 
-                for entry in group_entries:
-                    labels.append(entry['label'])
-                    count_values.append(entry['count'])
-                    sum_values.append(entry['sum'])
-            else:
-                total = Model.search_count(domain)
-                labels = ['All']
-                count_values = [total]
-                if self.value_field:
-                    rows = Model.read_group(domain, [self.value_field], [], lazy=False)
-                    total_sum = rows[0].get(self.value_field) if rows else 0.0
-                    sum_values = [total_sum or 0.0]
-                else:
-                    sum_values = [total]
+            for entry in group_entries:
+                labels.append(entry['label'])
+                count_values.append(entry['count'])
+                sum_values.append(entry['sum'])
 
             # Time-series comparison
             # If time_filter is 'this_month', group by day. Else group by month.
@@ -526,88 +518,6 @@ class LookerReport(models.Model):
             'counts': counts,
             'revenues': revenues,
             'total_pipeline': sum(revenues),
-        }
-
-    def get_salesperson_performance(self, additional_domain=None):
-        """Get top salespeople performance"""
-        self.ensure_one()
-        Model = self.env['crm.lead']
-        domain = self._eval_domain()
-        time_domain = self._get_time_domain()
-        domain = domain + time_domain
-        if additional_domain:
-            domain = domain + additional_domain
-
-        opp_domain = domain + [('type', '=', 'opportunity')]
-        
-        # Won deals by salesperson
-        won_domain = opp_domain + [('stage_id.is_won', '=', True)]
-        won_groups = Model.read_group(
-            won_domain,
-            ['user_id', 'expected_revenue:sum'],
-            ['user_id'],
-            lazy=False
-        )
-
-        # Total deals by salesperson  
-        total_groups = Model.with_context(active_test=False).read_group(
-            opp_domain,
-            ['user_id'],
-            ['user_id'],
-            lazy=False
-        )
-        
-        # Lost deals by salesperson
-        lost_domain = domain + [('type', '=', 'opportunity'), ('active', '=', False)]
-        lost_groups = Model.with_context(active_test=False).read_group(
-            lost_domain,
-            ['user_id'],
-            ['user_id'],
-            lazy=False
-        )
-
-        # Build salesperson data
-        salespeople = {}
-        for g in total_groups:
-            user = g.get('user_id')
-            if user:
-                user_id, user_name = user
-                salespeople[user_id] = {
-                    'name': user_name,
-                    'total': g.get('__count', 0),
-                    'won': 0,
-                    'lost': 0,
-                    'revenue': 0,
-                    'win_rate': 0,
-                }
-
-        for g in won_groups:
-            user = g.get('user_id')
-            if user and user[0] in salespeople:
-                salespeople[user[0]]['won'] = g.get('__count', 0)
-                salespeople[user[0]]['revenue'] = g.get('expected_revenue', 0) or 0
-
-        for g in lost_groups:
-            user = g.get('user_id')
-            if user and user[0] in salespeople:
-                salespeople[user[0]]['lost'] = g.get('__count', 0)
-
-        # Calculate win rates
-        result = []
-        for sp in salespeople.values():
-            decided = sp['won'] + sp['lost']
-            sp['win_rate'] = round((sp['won'] / decided * 100) if decided > 0 else 0, 1)
-            result.append(sp)
-
-        # Sort by revenue
-        result.sort(key=lambda x: x['revenue'], reverse=True)
-        
-        return {
-            'salespeople': result[:10],  # Top 10
-            'labels': [s['name'] for s in result[:10]],
-            'revenues': [s['revenue'] for s in result[:10]],
-            'win_rates': [s['win_rate'] for s in result[:10]],
-            'won_counts': [s['won'] for s in result[:10]],
         }
 
     def get_win_loss_trend(self, additional_domain=None):
