@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_looker_report_tree" model="ir.ui.view">
+        <field name="name">looker.report.tree</field>
+        <field name="model">looker_studio.report</field>
+        <field name="arch" type="xml">
+            <list string="Reports">
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_looker_report_form" model="ir.ui.view">
+        <field name="name">looker.report.form</field>
+        <field name="model">looker_studio.report</field>
+        <field name="arch" type="xml">
+            <form string="Report">
+                <header>
+                    <button name="action_preview" type="object" string="Xem trước" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <separator string="Nguồn dữ liệu: CRM Leads (crm.lead)"/>
+                        <group>
+                            <field name="time_filter"/>
+                            <field name="date_from" invisible="time_filter != 'custom'" required="time_filter == 'custom'"/>
+                            <field name="date_to" invisible="time_filter != 'custom'" required="time_filter == 'custom'"/>
+                            <field name="group_field"/>
+                            <field name="value_field"/>
+                            <field name="limit"/>
+                        </group>
+                        <group string="Mô tả">
+                            <field name="description"/>
+                        </group>
+                    </group>
+                    <footer>
+                        <button type="object" name="action_preview" string="Preview" class="btn-primary"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_looker_activity_report_tree" model="ir.ui.view">
+        <field name="name">looker.activity.report.tree</field>
+        <field name="model">looker_studio.activity_report</field>
+        <field name="arch" type="xml">
+            <list string="Activity Reports">
+                <field name="name"/>
+                <field name="time_filter"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_looker_activity_report_form" model="ir.ui.view">
+        <field name="name">looker.activity.report.form</field>
+        <field name="model">looker_studio.activity_report</field>
+        <field name="arch" type="xml">
+            <form string="Activity Report">
+                <header>
+                    <button name="action_preview" type="object" string="Xem trước" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <separator string="Nguồn dữ liệu: Activities (mail.activity)"/>
+                        <field name="time_filter"/>
+                        <field name="date_from" invisible="time_filter != 'custom'" required="time_filter == 'custom'"/>
+                        <field name="date_to" invisible="time_filter != 'custom'" required="time_filter == 'custom'"/>
+                        <field name="group_field"/>
+                        <field name="limit"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_looker_reports" model="ir.actions.act_window">
+        <field name="name">Báo cáo CRM</field>
+        <field name="res_model">looker_studio.report</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_looker_activity_reports" model="ir.actions.act_window">
+        <field name="name">Báo cáo Hoạt động</field>
+        <field name="res_model">looker_studio.activity_report</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_looker_root" name="Looker Studio" sequence="20"/>
+    <menuitem id="menu_looker_reports" name="Báo cáo CRM" parent="menu_looker_root" action="action_looker_reports" sequence="10"/>
+    <menuitem id="menu_looker_activity_reports" name="Báo cáo Hoạt động" parent="menu_looker_root" action="action_looker_activity_reports" sequence="20"/>
+
+</odoo>
