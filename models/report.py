@@ -4,6 +4,7 @@ from odoo.exceptions import UserError
 import logging
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+from collections import defaultdict
 
 _logger = logging.getLogger(__name__)
 
@@ -360,6 +361,394 @@ class LookerReport(models.Model):
         # Include lost leads (active=False)
         records = Model.with_context(active_test=False).search_read(domain, fields_to_read, limit=limit, order='create_date desc')
         return records
+
+    def get_funnel_data(self, additional_domain=None):
+        """Get data for funnel chart based on actual CRM stages"""
+        self.ensure_one()
+        Model = self.env['crm.lead']
+        Stage = self.env['crm.stage']
+        domain = self._eval_domain()
+        time_domain = self._get_time_domain()
+        domain = domain + time_domain
+        if additional_domain:
+            domain = domain + additional_domain
+
+        # Get all stages ordered by sequence
+        all_stages = Stage.search([], order='sequence asc')
+        
+        # Count Leads first
+        lead_domain = domain + [('type', '=', 'lead')]
+        lead_count = Model.search_count(lead_domain)
+        
+        # Count opportunities by each stage
+        opp_domain = domain + [('type', '=', 'opportunity')]
+        
+        # Build funnel data from stages
+        funnel_stages = []
+        colors = ['#6c757d', '#17a2b8', '#ffc107', '#fd7e14', '#007bff', '#28a745', '#20c997', '#6610f2']
+        
+        # Add Leads as first stage
+        funnel_stages.append({
+            'name': 'Leads',
+            'count': lead_count,
+            'color': colors[0],
+            'revenue': 0
+        })
+        
+        # Add each CRM stage with count and revenue
+        total_opp = 0
+        for idx, stage in enumerate(all_stages):
+            stage_domain = opp_domain + [('stage_id', '=', stage.id)]
+            count = Model.search_count(stage_domain)
+            
+            # Get revenue for this stage
+            revenue_data = Model.read_group(stage_domain, ['expected_revenue:sum'], [])
+            revenue = revenue_data[0].get('expected_revenue', 0) if revenue_data else 0
+            
+            total_opp += count
+            
+            funnel_stages.append({
+                'name': stage.name,
+                'count': count,
+                'color': colors[(idx + 1) % len(colors)],
+                'revenue': revenue or 0,
+                'is_won': stage.is_won
+            })
+        
+        # Also count lost opportunities
+        lost_domain = domain + [('type', '=', 'opportunity'), ('active', '=', False)]
+        lost_count = Model.with_context(active_test=False).search_count(lost_domain)
+        lost_revenue_data = Model.with_context(active_test=False).read_group(lost_domain, ['expected_revenue:sum'], [])
+        lost_revenue = lost_revenue_data[0].get('expected_revenue', 0) if lost_revenue_data else 0
+        
+        # Get won count
+        won_stages = Stage.search([('is_won', '=', True)]).ids
+        won_domain = opp_domain + [('stage_id', 'in', won_stages)]
+        won_count = Model.search_count(won_domain)
+        
+        total_opp_all = total_opp + lost_count
+
+        return {
+            'stages': funnel_stages,
+            'lost': {'count': lost_count, 'revenue': lost_revenue or 0},
+            'conversion_rates': {
+                'lead_to_opp': round((total_opp_all / lead_count * 100) if lead_count > 0 else 0, 1),
+                'opp_to_won': round((won_count / total_opp_all * 100) if total_opp_all > 0 else 0, 1),
+                'lead_to_won': round((won_count / lead_count * 100) if lead_count > 0 else 0, 1),
+            }
+        }
+
+    def get_lost_reason_data(self, additional_domain=None):
+        """Get data for Lost Reason Analysis Pie Chart"""
+        self.ensure_one()
+        Model = self.env['crm.lead']
+        domain = self._eval_domain()
+        time_domain = self._get_time_domain()
+        domain = domain + time_domain
+        if additional_domain:
+            domain = domain + additional_domain
+
+        # Lost opportunities (active=False)
+        lost_domain = domain + [('type', '=', 'opportunity'), ('active', '=', False)]
+        
+        # Group by lost_reason_id
+        groups = Model.with_context(active_test=False).read_group(
+            lost_domain,
+            ['lost_reason_id', 'expected_revenue:sum'],
+            ['lost_reason_id'],
+            lazy=False
+        )
+
+        labels = []
+        counts = []
+        revenues = []
+        colors = [
+            '#e74c3c', '#9b59b6', '#3498db', '#1abc9c', '#f39c12',
+            '#e67e22', '#95a5a6', '#34495e', '#16a085', '#c0392b'
+        ]
+        
+        total_lost = 0
+        for i, g in enumerate(groups):
+            reason = g.get('lost_reason_id')
+            label = reason[1] if reason else 'Không xác định'
+            count = g.get('__count', 0)
+            revenue = g.get('expected_revenue', 0) or 0
+            
+            labels.append(label)
+            counts.append(count)
+            revenues.append(revenue)
+            total_lost += count
+
+        # Calculate percentages
+        percentages = [round(c / total_lost * 100, 1) if total_lost > 0 else 0 for c in counts]
+
+        return {
+            'labels': labels,
+            'counts': counts,
+            'revenues': revenues,
+            'percentages': percentages,
+            'colors': colors[:len(labels)],
+            'total_lost': total_lost,
+            'total_lost_revenue': sum(revenues),
+        }
+
+    def get_pipeline_by_stage_data(self, additional_domain=None):
+        """Get pipeline value by stage"""
+        self.ensure_one()
+        Model = self.env['crm.lead']
+        domain = self._eval_domain()
+        time_domain = self._get_time_domain()
+        domain = domain + time_domain
+        if additional_domain:
+            domain = domain + additional_domain
+
+        opp_domain = domain + [('type', '=', 'opportunity')]
+        
+        groups = Model.read_group(
+            opp_domain,
+            ['stage_id', 'expected_revenue:sum'],
+            ['stage_id'],
+            lazy=False
+        )
+
+        labels = []
+        counts = []
+        revenues = []
+        
+        for g in groups:
+            stage = g.get('stage_id')
+            labels.append(stage[1] if stage else 'Undefined')
+            counts.append(g.get('__count', 0))
+            revenues.append(g.get('expected_revenue', 0) or 0)
+
+        return {
+            'labels': labels,
+            'counts': counts,
+            'revenues': revenues,
+            'total_pipeline': sum(revenues),
+        }
+
+    def get_salesperson_performance(self, additional_domain=None):
+        """Get top salespeople performance"""
+        self.ensure_one()
+        Model = self.env['crm.lead']
+        domain = self._eval_domain()
+        time_domain = self._get_time_domain()
+        domain = domain + time_domain
+        if additional_domain:
+            domain = domain + additional_domain
+
+        opp_domain = domain + [('type', '=', 'opportunity')]
+        
+        # Won deals by salesperson
+        won_domain = opp_domain + [('stage_id.is_won', '=', True)]
+        won_groups = Model.read_group(
+            won_domain,
+            ['user_id', 'expected_revenue:sum'],
+            ['user_id'],
+            lazy=False
+        )
+
+        # Total deals by salesperson  
+        total_groups = Model.with_context(active_test=False).read_group(
+            opp_domain,
+            ['user_id'],
+            ['user_id'],
+            lazy=False
+        )
+        
+        # Lost deals by salesperson
+        lost_domain = domain + [('type', '=', 'opportunity'), ('active', '=', False)]
+        lost_groups = Model.with_context(active_test=False).read_group(
+            lost_domain,
+            ['user_id'],
+            ['user_id'],
+            lazy=False
+        )
+
+        # Build salesperson data
+        salespeople = {}
+        for g in total_groups:
+            user = g.get('user_id')
+            if user:
+                user_id, user_name = user
+                salespeople[user_id] = {
+                    'name': user_name,
+                    'total': g.get('__count', 0),
+                    'won': 0,
+                    'lost': 0,
+                    'revenue': 0,
+                    'win_rate': 0,
+                }
+
+        for g in won_groups:
+            user = g.get('user_id')
+            if user and user[0] in salespeople:
+                salespeople[user[0]]['won'] = g.get('__count', 0)
+                salespeople[user[0]]['revenue'] = g.get('expected_revenue', 0) or 0
+
+        for g in lost_groups:
+            user = g.get('user_id')
+            if user and user[0] in salespeople:
+                salespeople[user[0]]['lost'] = g.get('__count', 0)
+
+        # Calculate win rates
+        result = []
+        for sp in salespeople.values():
+            decided = sp['won'] + sp['lost']
+            sp['win_rate'] = round((sp['won'] / decided * 100) if decided > 0 else 0, 1)
+            result.append(sp)
+
+        # Sort by revenue
+        result.sort(key=lambda x: x['revenue'], reverse=True)
+        
+        return {
+            'salespeople': result[:10],  # Top 10
+            'labels': [s['name'] for s in result[:10]],
+            'revenues': [s['revenue'] for s in result[:10]],
+            'win_rates': [s['win_rate'] for s in result[:10]],
+            'won_counts': [s['won'] for s in result[:10]],
+        }
+
+    def get_win_loss_trend(self, additional_domain=None):
+        """Get Win/Loss trend over time"""
+        self.ensure_one()
+        Model = self.env['crm.lead']
+        domain = self._eval_domain()
+        time_domain = self._get_time_domain()
+        domain = domain + time_domain
+        if additional_domain:
+            domain = domain + additional_domain
+
+        opp_domain = domain + [('type', '=', 'opportunity')]
+        
+        # Won by month
+        won_domain = opp_domain + [('stage_id.is_won', '=', True)]
+        won_groups = Model.read_group(
+            won_domain,
+            ['create_date', 'expected_revenue:sum'],
+            ['create_date:month'],
+            lazy=False
+        )
+
+        # Lost by month  
+        lost_domain = domain + [('type', '=', 'opportunity'), ('active', '=', False)]
+        lost_groups = Model.with_context(active_test=False).read_group(
+            lost_domain,
+            ['create_date'],
+            ['create_date:month'],
+            lazy=False
+        )
+
+        # Build timeline data
+        won_by_month = {}
+        lost_by_month = {}
+        
+        for g in won_groups:
+            month = g.get('create_date:month')
+            if month:
+                won_by_month[month] = {
+                    'count': g.get('__count', 0),
+                    'revenue': g.get('expected_revenue', 0) or 0
+                }
+
+        for g in lost_groups:
+            month = g.get('create_date:month')
+            if month:
+                lost_by_month[month] = g.get('__count', 0)
+
+        # Merge labels
+        all_months = sorted(set(list(won_by_month.keys()) + list(lost_by_month.keys())))
+        
+        labels = all_months
+        won_counts = [won_by_month.get(m, {}).get('count', 0) for m in all_months]
+        won_revenues = [won_by_month.get(m, {}).get('revenue', 0) for m in all_months]
+        lost_counts = [lost_by_month.get(m, 0) for m in all_months]
+
+        return {
+            'labels': labels,
+            'won_counts': won_counts,
+            'won_revenues': won_revenues,
+            'lost_counts': lost_counts,
+        }
+
+    def get_source_analysis(self, additional_domain=None):
+        """Get revenue by source/campaign"""
+        self.ensure_one()
+        Model = self.env['crm.lead']
+        domain = self._eval_domain()
+        time_domain = self._get_time_domain()
+        domain = domain + time_domain
+        if additional_domain:
+            domain = domain + additional_domain
+
+        opp_domain = domain + [('type', '=', 'opportunity')]
+        
+        # By source_id if available
+        if 'source_id' in Model._fields:
+            groups = Model.read_group(
+                opp_domain,
+                ['source_id', 'expected_revenue:sum'],
+                ['source_id'],
+                lazy=False
+            )
+            
+            labels = []
+            counts = []
+            revenues = []
+            
+            for g in groups:
+                source = g.get('source_id')
+                labels.append(source[1] if source else 'Direct/Unknown')
+                counts.append(g.get('__count', 0))
+                revenues.append(g.get('expected_revenue', 0) or 0)
+
+            return {
+                'labels': labels,
+                'counts': counts,
+                'revenues': revenues,
+            }
+        
+        return {'labels': [], 'counts': [], 'revenues': []}
+
+    def get_deal_metrics(self, additional_domain=None):
+        """Get advanced deal metrics"""
+        self.ensure_one()
+        Model = self.env['crm.lead']
+        domain = self._eval_domain()
+        time_domain = self._get_time_domain()
+        domain = domain + time_domain
+        if additional_domain:
+            domain = domain + additional_domain
+
+        opp_domain = domain + [('type', '=', 'opportunity')]
+        won_domain = opp_domain + [('stage_id.is_won', '=', True)]
+        
+        # Average Deal Size
+        won_data = Model.read_group(won_domain, ['expected_revenue:avg'], [])
+        avg_deal_size = won_data[0].get('expected_revenue', 0) if won_data else 0
+
+        # Total Won Revenue
+        total_won_data = Model.read_group(won_domain, ['expected_revenue:sum'], [])
+        total_won_revenue = total_won_data[0].get('expected_revenue', 0) if total_won_data else 0
+
+        # Average Probability (Active Opps)
+        prob_data = Model.read_group(opp_domain, ['probability:avg'], [])
+        avg_probability = prob_data[0].get('probability', 0) if prob_data else 0
+
+        # Count metrics
+        total_opps = Model.with_context(active_test=False).search_count(opp_domain)
+        active_opps = Model.search_count(opp_domain)
+        won_count = Model.search_count(won_domain)
+
+        return {
+            'avg_deal_size': round(avg_deal_size, 2),
+            'total_won_revenue': round(total_won_revenue, 2),
+            'avg_probability': round(avg_probability, 1),
+            'total_opps': total_opps,
+            'active_opps': active_opps,
+            'won_count': won_count,
+        }
 
 
 class LookerActivityReport(models.Model):

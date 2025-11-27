@@ -15,6 +15,15 @@ class LookerReportController(http.Controller):
         kpi_data = report.get_kpi_data()
         chart_data = report.get_chart_data()
         detail_data = report.get_detail_data()
+        
+        # New advanced data
+        funnel_data = report.get_funnel_data()
+        lost_reason_data = report.get_lost_reason_data()
+        pipeline_data = report.get_pipeline_by_stage_data()
+        salesperson_data = report.get_salesperson_performance()
+        win_loss_trend = report.get_win_loss_trend()
+        source_data = report.get_source_analysis()
+        deal_metrics = report.get_deal_metrics()
 
         context = {
             'report': report,
@@ -25,9 +34,39 @@ class LookerReportController(http.Controller):
             'sums_json': json.dumps(chart_data.get('sum_values', [])),
             'line_labels_json': json.dumps(chart_data.get('line_labels', [])),
             'line_values_json': json.dumps(chart_data.get('line_values', [])),
+            # Funnel data
+            'funnel_data': funnel_data,
+            'funnel_labels_json': json.dumps([s['name'] for s in funnel_data['stages']]),
+            'funnel_values_json': json.dumps([s['count'] for s in funnel_data['stages']]),
+            'funnel_colors_json': json.dumps([s['color'] for s in funnel_data['stages']]),
+            # Lost Reason data
+            'lost_reason_data': lost_reason_data,
+            'lost_labels_json': json.dumps(lost_reason_data.get('labels', [])),
+            'lost_counts_json': json.dumps(lost_reason_data.get('counts', [])),
+            'lost_colors_json': json.dumps(lost_reason_data.get('colors', [])),
+            # Pipeline data
+            'pipeline_data': pipeline_data,
+            'pipeline_labels_json': json.dumps(pipeline_data.get('labels', [])),
+            'pipeline_revenues_json': json.dumps(pipeline_data.get('revenues', [])),
+            # Salesperson data
+            'salesperson_data': salesperson_data,
+            'sp_labels_json': json.dumps(salesperson_data.get('labels', [])),
+            'sp_revenues_json': json.dumps(salesperson_data.get('revenues', [])),
+            'sp_win_rates_json': json.dumps(salesperson_data.get('win_rates', [])),
+            # Win/Loss trend
+            'trend_data': win_loss_trend,
+            'trend_labels_json': json.dumps(win_loss_trend.get('labels', [])),
+            'trend_won_json': json.dumps(win_loss_trend.get('won_counts', [])),
+            'trend_lost_json': json.dumps(win_loss_trend.get('lost_counts', [])),
+            # Source data
+            'source_data': source_data,
+            'source_labels_json': json.dumps(source_data.get('labels', [])),
+            'source_revenues_json': json.dumps(source_data.get('revenues', [])),
+            # Deal metrics
+            'deal_metrics': deal_metrics,
             'json': json,
         }
-        return request.render('looker_studio.report_kpi_template_v2', context)
+        return request.render('looker_studio.report_kpi_template_v3', context)
 
     @http.route('/looker_studio/activity_report/<int:report_id>', type='http', auth='user', website=True)
     def render_activity_report(self, report_id, **kwargs):

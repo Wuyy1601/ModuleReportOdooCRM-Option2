@@ -51,13 +51,18 @@
     </template>
     
     <template id="report_kpi_template_v2" name="KPI Report Template V2">
+        <!-- Deprecated - use v3 -->
+        <t t-call="looker_studio.report_kpi_template_v3"/>
+    </template>
+    
+    <template id="report_kpi_template_v3" name="KPI Report Template V3">
         <t t-call="website.layout">
-            <div class="container-fluid mt-4 px-4">
+            <div class="container-fluid mt-4 px-4" style="background-color: #f8f9fc;">
                 <h1 class="h3 mb-4 text-gray-800" t-esc="report.name"/>
 
-                <!-- KPIs -->
+                <!-- KPIs Row 1 -->
                 <div class="row">
-                    <div class="col-xl-4 col-md-6 mb-4">
+                    <div class="col-xl-3 col-md-6 mb-4">
                         <div class="card border-left-primary shadow h-100 py-2">
                             <div class="card-body">
                                 <div class="row no-gutters align-items-center">
@@ -73,7 +78,7 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-4 col-md-6 mb-4">
+                    <div class="col-xl-3 col-md-6 mb-4">
                         <div class="card border-left-success shadow h-100 py-2">
                             <div class="card-body">
                                 <div class="row no-gutters align-items-center">
@@ -89,7 +94,7 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-4 col-md-6 mb-4">
+                    <div class="col-xl-3 col-md-6 mb-4">
                         <div class="card border-left-info shadow h-100 py-2">
                             <div class="card-body">
                                 <div class="row no-gutters align-items-center">
@@ -99,6 +104,73 @@
                                     </div>
                                     <div class="col-auto">
                                         <i class="fa fa-dollar fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-warning shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Avg Deal Size</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" t-esc="deal_metrics['avg_deal_size']" t-options='{"widget": "monetary", "display_currency": report.env.company.currency_id}'/>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fa fa-chart-line fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPIs Row 2 -->
+                <div class="row">
+                    <div class="col-xl-4 col-md-6 mb-4">
+                        <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Won Revenue</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" t-esc="deal_metrics['total_won_revenue']" t-options='{"widget": "monetary", "display_currency": report.env.company.currency_id}'/>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fa fa-money-bill-wave fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-4 col-md-6 mb-4">
+                        <div class="card border-left-danger shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Total Lost Revenue</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" t-esc="lost_reason_data['total_lost_revenue']" t-options='{"widget": "monetary", "display_currency": report.env.company.currency_id}'/>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fa fa-times-circle fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-4 col-md-6 mb-4">
+                        <div class="card border-left-info shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Avg Probability</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800"><t t-esc="deal_metrics['avg_probability']"/>%</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fa fa-percentage fa-2x text-gray-300"></i>
                                     </div>
                                 </div>
                             </div>
@@ -149,7 +221,154 @@
                     </div>
                 </div>
 
-                <!-- Chart -->
+                <!-- Sales Funnel -->
+                <div class="row">
+                    <div class="col-xl-8 col-lg-7">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fa fa-filter mr-2"></i>Sales Funnel - Phễu Bán Hàng
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-area" style="height: 400px;">
+                                    <canvas id="funnel_chart"></canvas>
+                                </div>
+                                <hr/>
+                                <div class="row mt-3">
+                                    <div class="col-md-4 text-center">
+                                        <div class="small text-muted">Lead → Opportunity</div>
+                                        <div class="h4 font-weight-bold text-info"><t t-esc="funnel_data['conversion_rates']['lead_to_opp']"/>%</div>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <div class="small text-muted">Opportunity → Won</div>
+                                        <div class="h4 font-weight-bold text-success"><t t-esc="funnel_data['conversion_rates']['opp_to_won']"/>%</div>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <div class="small text-muted">Lead → Won (Overall)</div>
+                                        <div class="h4 font-weight-bold text-primary"><t t-esc="funnel_data['conversion_rates']['lead_to_won']"/>%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Lost Reason Pie Chart -->
+                    <div class="col-xl-4 col-lg-5">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                                <h6 class="m-0 font-weight-bold text-danger">
+                                    <i class="fa fa-chart-pie mr-2"></i>Lost Reason Analysis
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-pie" style="height: 280px;">
+                                    <canvas id="lost_reason_chart"></canvas>
+                                </div>
+                                <hr/>
+                                <div class="mt-2 small">
+                                    <div class="text-center mb-2">
+                                        <span class="font-weight-bold text-danger">Tổng: <t t-esc="lost_reason_data['total_lost']"/> deals thất bại</span>
+                                    </div>
+                                    <t t-foreach="lost_reason_data['labels'][:5]" t-as="label">
+                                        <div class="d-flex justify-content-between">
+                                            <span><i class="fa fa-circle mr-1" t-att-style="'color:' + lost_reason_data['colors'][label_index]"></i><t t-esc="label"/></span>
+                                            <span><t t-esc="lost_reason_data['percentages'][label_index]"/>%</span>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pipeline and Win/Loss Trend -->
+                <div class="row">
+                    <div class="col-xl-6 col-lg-6">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fa fa-chart-bar mr-2"></i>Pipeline Value by Stage
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-area" style="height: 350px;">
+                                    <canvas id="pipeline_chart"></canvas>
+                                </div>
+                                <div class="mt-3 text-center">
+                                    <span class="h5 font-weight-bold text-primary">Total Pipeline: <t t-esc="pipeline_data['total_pipeline']" t-options='{"widget": "monetary", "display_currency": report.env.company.currency_id}'/></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-6 col-lg-6">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fa fa-chart-line mr-2"></i>Win/Loss Trend
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-area" style="height: 350px;">
+                                    <canvas id="trend_chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Salesperson Performance -->
+                <div class="row">
+                    <div class="col-xl-8 col-lg-7">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fa fa-users mr-2"></i>Top Salesperson Performance
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-area" style="height: 350px;">
+                                    <canvas id="salesperson_chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-4 col-lg-5">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">
+                                    <i class="fa fa-trophy mr-2"></i>Leaderboard
+                                </h6>
+                            </div>
+                            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                                <t t-foreach="salesperson_data['salespeople']" t-as="sp">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="mr-3">
+                                            <div class="icon-circle" t-att-class="'bg-' + ('success' if sp_index == 0 else 'primary' if sp_index == 1 else 'info' if sp_index == 2 else 'secondary')" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                                <t t-esc="sp_index + 1"/>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="font-weight-bold"><t t-esc="sp['name']"/></div>
+                                            <div class="small text-muted">
+                                                <span class="text-success"><t t-esc="sp['won']"/> won</span> | 
+                                                <span class="text-danger"><t t-esc="sp['lost']"/> lost</span> |
+                                                Win Rate: <t t-esc="sp['win_rate']"/>%
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="h6 mb-0 font-weight-bold text-success" t-esc="sp['revenue']" t-options='{"widget": "monetary", "display_currency": report.env.company.currency_id}'/>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Overview Chart -->
                 <div class="row">
                     <div class="col-12">
                         <div class="card shadow mb-4">
@@ -206,7 +425,7 @@
                                             <td><t t-esc="row.get('probability')"/>%</td>
                                             <td>
                                                 <t t-if="row.get('lost_reason_id')">
-                                                    <t t-esc="row['lost_reason_id'][1]"/>
+                                                    <span class="badge badge-danger"><t t-esc="row['lost_reason_id'][1]"/></span>
                                                 </t>
                                             </td>
                                             <td t-if="report.group_field">
@@ -229,6 +448,7 @@
                 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
                 <script>
                     (function(){
+                        // Overview Chart
                         var ctx = document.getElementById('kpi_chart').getContext('2d');
                         var labels = <t t-raw="labels_json"/>;
                         var counts = <t t-raw="counts_json"/>;
@@ -257,66 +477,203 @@
                             },
                             options: {
                                 maintainAspectRatio: false,
-                                layout: {
-                                    padding: {
-                                        left: 10,
-                                        right: 25,
-                                        top: 25,
-                                        bottom: 0
+                                layout: { padding: { left: 10, right: 25, top: 25, bottom: 0 } },
+                                scales: {
+                                    x: { grid: { display: false, drawBorder: false }, ticks: { maxTicksLimit: 6 } },
+                                    y: { type: 'linear', display: true, position: 'left', ticks: { maxTicksLimit: 5, padding: 10 }, grid: { color: "rgb(234, 236, 244)", drawBorder: false, borderDash: [2] } },
+                                    y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false } },
+                                },
+                                plugins: { legend: { display: true } }
+                            }
+                        });
+
+                        // Funnel Chart (Horizontal Bar)
+                        var funnelCtx = document.getElementById('funnel_chart').getContext('2d');
+                        var funnelLabels = <t t-raw="funnel_labels_json"/>;
+                        var funnelValues = <t t-raw="funnel_values_json"/>;
+                        var funnelColors = <t t-raw="funnel_colors_json"/>;
+                        
+                        new Chart(funnelCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: funnelLabels,
+                                datasets: [{
+                                    label: 'Số lượng',
+                                    data: funnelValues,
+                                    backgroundColor: funnelColors,
+                                    borderColor: funnelColors,
+                                    borderWidth: 1,
+                                    borderRadius: 5,
+                                    barThickness: 35,
+                                }]
+                            },
+                            options: {
+                                indexAxis: 'y',
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return context.raw + ' records';
+                                            }
+                                        }
                                     }
                                 },
                                 scales: {
-                                    x: {
-                                        grid: {
-                                            display: false,
-                                            drawBorder: false
-                                        },
-                                        ticks: {
-                                            maxTicksLimit: 6
+                                    x: { 
+                                        grid: { display: true, color: 'rgba(0,0,0,0.05)' }, 
+                                        ticks: { stepSize: 1 },
+                                        beginAtZero: true
+                                    },
+                                    y: { 
+                                        grid: { display: false },
+                                        ticks: { font: { weight: 'bold' } }
+                                    }
+                                }
+                            }
+                        });
+
+                        // Lost Reason Pie Chart
+                        var lostCtx = document.getElementById('lost_reason_chart').getContext('2d');
+                        var lostLabels = <t t-raw="lost_labels_json"/>;
+                        var lostCounts = <t t-raw="lost_counts_json"/>;
+                        var lostColors = <t t-raw="lost_colors_json"/>;
+                        
+                        new Chart(lostCtx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: lostLabels,
+                                datasets: [{
+                                    data: lostCounts,
+                                    backgroundColor: lostColors,
+                                    borderWidth: 2,
+                                    borderColor: '#ffffff',
+                                }]
+                            },
+                            options: {
+                                maintainAspectRatio: false,
+                                cutout: '60%',
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                var total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                                var percentage = ((context.raw / total) * 100).toFixed(1);
+                                                return context.label + ': ' + context.raw + ' (' + percentage + '%)';
+                                            }
                                         }
-                                    },
-                                    y: {
-                                        type: 'linear',
-                                        display: true,
-                                        position: 'left',
-                                        ticks: {
-                                            maxTicksLimit: 5,
-                                            padding: 10,
-                                        },
-                                        grid: {
-                                            color: "rgb(234, 236, 244)",
-                                            zeroLineColor: "rgb(234, 236, 244)",
-                                            drawBorder: false,
-                                            borderDash: [2],
-                                            zeroLineBorderDash: [2]
+                                    }
+                                }
+                            }
+                        });
+
+                        // Pipeline Chart
+                        var pipelineCtx = document.getElementById('pipeline_chart').getContext('2d');
+                        var pipelineLabels = <t t-raw="pipeline_labels_json"/>;
+                        var pipelineRevenues = <t t-raw="pipeline_revenues_json"/>;
+                        
+                        new Chart(pipelineCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: pipelineLabels,
+                                datasets: [{
+                                    label: 'Revenue',
+                                    data: pipelineRevenues,
+                                    backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69'],
+                                    borderRadius: 5,
+                                }]
+                            },
+                            options: {
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(context.raw);
+                                            }
                                         }
-                                    },
-                                    y1: {
-                                        type: 'linear',
-                                        display: true,
-                                        position: 'right',
-                                        grid: {
-                                            drawOnChartArea: false,
-                                        },
-                                    },
+                                    }
                                 },
-                                legend: {
-                                    display: true
-                                },
-                                tooltips: {
-                                    backgroundColor: "rgb(255,255,255)",
-                                    bodyFontColor: "#858796",
-                                    titleMarginBottom: 10,
-                                    titleFontColor: '#6e707e',
-                                    titleFontSize: 14,
-                                    borderColor: '#dddfeb',
-                                    borderWidth: 1,
-                                    xPadding: 15,
-                                    yPadding: 15,
-                                    displayColors: false,
-                                    intersect: false,
-                                    mode: 'index',
-                                    caretPadding: 10,
+                                scales: {
+                                    x: { grid: { display: false } },
+                                    y: { grid: { color: "rgb(234, 236, 244)", borderDash: [2] }, ticks: { callback: function(value) { return new Intl.NumberFormat('vi-VN', { notation: 'compact' }).format(value); } } }
+                                }
+                            }
+                        });
+
+                        // Win/Loss Trend Chart
+                        var trendCtx = document.getElementById('trend_chart').getContext('2d');
+                        var trendLabels = <t t-raw="trend_labels_json"/>;
+                        var trendWon = <t t-raw="trend_won_json"/>;
+                        var trendLost = <t t-raw="trend_lost_json"/>;
+                        
+                        new Chart(trendCtx, {
+                            type: 'line',
+                            data: {
+                                labels: trendLabels,
+                                datasets: [{
+                                    label: 'Won',
+                                    data: trendWon,
+                                    borderColor: '#1cc88a',
+                                    backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                                    fill: true,
+                                    tension: 0.4,
+                                }, {
+                                    label: 'Lost',
+                                    data: trendLost,
+                                    borderColor: '#e74a3b',
+                                    backgroundColor: 'rgba(231, 74, 59, 0.1)',
+                                    fill: true,
+                                    tension: 0.4,
+                                }]
+                            },
+                            options: {
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: true, position: 'top' } },
+                                scales: {
+                                    x: { grid: { display: false } },
+                                    y: { grid: { color: "rgb(234, 236, 244)", borderDash: [2] }, beginAtZero: true }
+                                }
+                            }
+                        });
+
+                        // Salesperson Performance Chart
+                        var spCtx = document.getElementById('salesperson_chart').getContext('2d');
+                        var spLabels = <t t-raw="sp_labels_json"/>;
+                        var spRevenues = <t t-raw="sp_revenues_json"/>;
+                        var spWinRates = <t t-raw="sp_win_rates_json"/>;
+                        
+                        new Chart(spCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: spLabels,
+                                datasets: [{
+                                    label: 'Revenue',
+                                    data: spRevenues,
+                                    backgroundColor: '#4e73df',
+                                    yAxisID: 'y',
+                                    order: 2,
+                                }, {
+                                    label: 'Win Rate %',
+                                    data: spWinRates,
+                                    type: 'line',
+                                    borderColor: '#1cc88a',
+                                    backgroundColor: '#1cc88a',
+                                    pointRadius: 5,
+                                    yAxisID: 'y1',
+                                    order: 1,
+                                }]
+                            },
+                            options: {
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: true, position: 'top' } },
+                                scales: {
+                                    x: { grid: { display: false } },
+                                    y: { type: 'linear', display: true, position: 'left', grid: { color: "rgb(234, 236, 244)", borderDash: [2] }, ticks: { callback: function(value) { return new Intl.NumberFormat('vi-VN', { notation: 'compact' }).format(value); } } },
+                                    y1: { type: 'linear', display: true, position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { callback: function(value) { return value + '%'; } } }
                                 }
                             }
                         });

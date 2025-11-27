@@ -1,11 +1,21 @@
 {
     'name': 'Looker Studio Reports',
-    'version': '2.1.0',
-    'summary': 'Looker Studio reports lookalike inside Odoo',
-    'description': 'Module to make reports in Odoo.',
+    'version': '3.2.0',
+    'summary': 'Advanced CRM Analytics & Reporting Dashboard',
+    'description': '''
+        Comprehensive CRM reporting module with:
+        - Sales Funnel Visualization (Lead → Opportunity → Won)
+        - Lost Reason Analysis (Pie Chart)
+        - Pipeline Value by Stage
+        - Win/Loss Trend over Time
+        - Top Salesperson Performance & Leaderboard
+        - Average Deal Size & Sales Cycle Metrics
+        - Revenue by Source Analysis
+        - Detailed Data Tables with Filtering
+    ''',
     'category': 'Reporting',
     'author': 'Your Name',
-    'depends': ['base', 'web', 'website'],
+    'depends': ['base', 'web', 'website', 'crm'],
     'data': [
         'security/ir.model.access.csv',
         'views/report_views.xml',
@@ -20,5 +30,6 @@
         ],
     },
     'installable': True,
-    'application': False,
+    'application': True,
+    'license': 'LGPL-3',
 }
