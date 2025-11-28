@@ -807,4 +807,403 @@
             </div>
         </t>
     </template>
+    
+    <!-- Sales Performance Report Template V2 -->
+    <template id="report_sales_performance_template_v2" name="Sales Performance Report Template V2">
+        <t t-call="website.layout">
+            <div class="container-fluid mt-4 px-4" style="background-color: #f8f9fc;">
+                <h1 class="h3 mb-4 text-gray-800" t-esc="report.name"/>
+                
+                <!-- Filter Info -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card shadow">
+                            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                                <h6 class="m-0 font-weight-bold text-primary">Sales Performance by Salesperson</h6>
+                                <div>
+                                    <span class="badge bg-secondary text-white me-2">
+                                        Group by: <t t-esc="salesperson_filter"/>
+                                    </span>
+                                    <span class="badge bg-info text-white">
+                                        <t t-esc="time_filter_display"/>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Top KPIs Row -->
+                <div class="row mb-4">
+                    <!-- Total Revenue -->
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Revenue</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <t t-esc="'{:,.0f}'.format(total_revenue)"/> VND
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Total Won -->
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Won Deals</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <t t-esc="total_won"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Total Lost -->
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-danger shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Total Lost Deals</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <t t-esc="total_lost"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Win Rate -->
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card border-left-info shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Win Rate</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <t t-esc="'{:.1f}'.format(avg_win_rate)"/>%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Revenue by Salesperson Chart -->
+                <div class="row mb-4">
+                    <div class="col-xl-8 col-lg-7">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Revenue by Salesperson</h6>
+                            </div>
+                            <div class="card-body">
+                                <div style="height: 320px;">
+                                    <canvas id="revenueChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Win Rate Chart -->
+                    <div class="col-xl-4 col-lg-5">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Win Rate by Salesperson</h6>
+                            </div>
+                            <div class="card-body">
+                                <div style="height: 320px;">
+                                    <canvas id="winRateChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Conversion Rate Chart and Quotation Stats -->
+                <div class="row mb-4">
+                    <div class="col-xl-6 col-lg-6">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Lead → Opportunity Conversion Rate</h6>
+                            </div>
+                            <div class="card-body">
+                                <div style="height: 280px;">
+                                    <canvas id="conversionChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-6 col-lg-6">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Quotations by Salesperson</h6>
+                            </div>
+                            <div class="card-body">
+                                <div style="height: 280px;">
+                                    <canvas id="quotationChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Detailed Performance Table -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Detailed Salesperson Performance</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover" id="performanceTable" width="100%" cellspacing="0">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th>Salesperson</th>
+                                                <th class="text-center">Leads</th>
+                                                <th class="text-center">Opportunities</th>
+                                                <th class="text-center">Won</th>
+                                                <th class="text-center">Lost</th>
+                                                <th class="text-center">Conversion Rate</th>
+                                                <th class="text-center">Win Rate</th>
+                                                <th class="text-right">Revenue</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="salesperson_performance" t-as="sp">
+                                                <tr>
+                                                    <td><strong><t t-esc="sp['name']"/></strong></td>
+                                                    <td class="text-center"><t t-esc="sp['leads']"/></td>
+                                                    <td class="text-center"><t t-esc="sp['opportunities']"/></td>
+                                                    <td class="text-center text-success"><t t-esc="sp['won']"/></td>
+                                                    <td class="text-center text-danger"><t t-esc="sp['lost']"/></td>
+                                                    <td class="text-center">
+                                                        <span t-attf-class="badge #{sp['lead_to_opp_rate'] >= 50 and 'bg-success' or sp['lead_to_opp_rate'] >= 25 and 'bg-warning' or 'bg-danger'}" style="font-size: 0.9em;">
+                                                            <t t-esc="'{:.1f}'.format(sp['lead_to_opp_rate'])"/>%
+                                                        </span>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <span t-attf-class="badge #{sp['win_rate'] >= 50 and 'bg-success' or sp['win_rate'] >= 25 and 'bg-warning' or 'bg-danger'}" style="font-size: 0.9em;">
+                                                            <t t-esc="'{:.1f}'.format(sp['win_rate'])"/>%
+                                                        </span>
+                                                    </td>
+                                                    <td class="text-right">
+                                                        <strong><t t-esc="'{:,.0f}'.format(sp['won_revenue'])"/> VND</strong>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                        <tfoot class="thead-dark">
+                                            <tr>
+                                                <th>TOTAL</th>
+                                                <th class="text-center"><t t-esc="total_leads"/></th>
+                                                <th class="text-center"><t t-esc="total_opportunities"/></th>
+                                                <th class="text-center"><t t-esc="total_won"/></th>
+                                                <th class="text-center"><t t-esc="total_lost"/></th>
+                                                <th class="text-center">
+                                                    <t t-esc="'{:.1f}'.format(avg_conversion_rate)"/>%
+                                                </th>
+                                                <th class="text-center">
+                                                    <t t-esc="'{:.1f}'.format(avg_win_rate)"/>%
+                                                </th>
+                                                <th class="text-right">
+                                                    <t t-esc="'{:,.0f}'.format(total_revenue)"/> VND
+                                                </th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <!-- Chart.js Scripts -->
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            <script>
+                (function(){
+                    var labels = <t t-raw="labels_json"/> || [];
+                    var revenues = <t t-raw="revenues_json"/> || [];
+                    var winRates = <t t-raw="won_rates_json"/> || [];
+                    var conversionRates = <t t-raw="conversion_rates_json"/> || [];
+                    var quotationLabels = <t t-raw="quotation_labels_json"/> || [];
+                    var quotationCounts = <t t-raw="quotation_counts_json"/> || [];
+                    var quotationAmounts = <t t-raw="quotation_amounts_json"/> || [];
+                    
+                    // Color palette
+                    var colors = [
+                        'rgba(78, 115, 223, 0.8)',
+                        'rgba(28, 200, 138, 0.8)',
+                        'rgba(54, 185, 204, 0.8)',
+                        'rgba(246, 194, 62, 0.8)',
+                        'rgba(231, 74, 59, 0.8)',
+                        'rgba(133, 135, 150, 0.8)',
+                        'rgba(102, 16, 242, 0.8)',
+                        'rgba(253, 126, 20, 0.8)'
+                    ];
+                    
+                    // Revenue Chart
+                    var revenueCtx = document.getElementById('revenueChart').getContext('2d');
+                    new Chart(revenueCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Revenue (VND)',
+                                data: revenues,
+                                backgroundColor: colors,
+                                borderColor: colors.map(c => c.replace('0.8', '1')),
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value.toLocaleString() + ' VND';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Win Rate Chart
+                    var winRateCtx = document.getElementById('winRateChart').getContext('2d');
+                    new Chart(winRateCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: winRates,
+                                backgroundColor: colors,
+                                hoverOffset: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'right',
+                                    labels: { boxWidth: 12 }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return context.label + ': ' + context.raw.toFixed(1) + '%';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Conversion Rate Chart
+                    var conversionCtx = document.getElementById('conversionChart').getContext('2d');
+                    new Chart(conversionCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Conversion Rate (%)',
+                                data: conversionRates,
+                                backgroundColor: 'rgba(28, 200, 138, 0.7)',
+                                borderColor: 'rgba(28, 200, 138, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value + '%';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Quotation Chart
+                    var quotationCtx = document.getElementById('quotationChart').getContext('2d');
+                    new Chart(quotationCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: quotationLabels,
+                            datasets: [{
+                                label: 'Quotation Count',
+                                data: quotationCounts,
+                                backgroundColor: 'rgba(54, 185, 204, 0.7)',
+                                borderColor: 'rgba(54, 185, 204, 1)',
+                                borderWidth: 1,
+                                yAxisID: 'y'
+                            }, {
+                                label: 'Amount (VND)',
+                                data: quotationAmounts,
+                                type: 'line',
+                                borderColor: 'rgba(246, 194, 62, 1)',
+                                backgroundColor: 'rgba(246, 194, 62, 0.2)',
+                                fill: true,
+                                yAxisID: 'y1'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false
+                            },
+                            scales: {
+                                y: {
+                                    type: 'linear',
+                                    position: 'left',
+                                    beginAtZero: true,
+                                    title: { display: true, text: 'Count' }
+                                },
+                                y1: {
+                                    type: 'linear',
+                                    position: 'right',
+                                    beginAtZero: true,
+                                    grid: { drawOnChartArea: false },
+                                    title: { display: true, text: 'Amount (VND)' }
+                                }
+                            }
+                        }
+                    });
+                })();
+            </script>
+        </t>
+    </template>
 </odoo>

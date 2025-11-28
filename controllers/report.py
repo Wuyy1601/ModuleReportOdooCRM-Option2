@@ -93,3 +93,58 @@ class LookerReportController(http.Controller):
             'json': json,
         }
         return request.render('looker_studio.report_activity_template', context)
+
+    @http.route('/looker_studio/sales_performance/<int:report_id>', type='http', auth='user', website=True)
+    def render_sales_performance_report(self, report_id, **kwargs):
+        report = request.env['looker_studio.sales_performance_report'].sudo().browse(report_id)
+        if not report.exists():
+            return request.not_found()
+        
+        summary = report.get_summary_data()
+        chart_data = report.get_chart_data()
+        detail_data = report.get_detail_data()
+        
+        # Time filter display
+        time_filter_labels = {
+            'last_3_months': '3 tháng gần nhất',
+            'last_6_months': '6 tháng gần nhất',
+            'this_year': 'Năm nay',
+            'custom': 'Tùy chọn',
+        }
+        time_filter_display = time_filter_labels.get(report.time_filter, 'Năm nay')
+        
+        # Group by salesperson display
+        if report.group_by_mode == 'all':
+            salesperson_filter = 'Tất cả nhân viên'
+        elif report.salesperson_id:
+            salesperson_filter = report.salesperson_id.name
+        else:
+            salesperson_filter = 'Chưa chọn nhân viên'
+        
+        context = {
+            'report': report,
+            'summary': summary,
+            'time_filter_display': time_filter_display,
+            'salesperson_filter': salesperson_filter,
+            # KPI values from summary - now correctly filtered by salesperson
+            'total_revenue': summary.get('total_won_revenue', 0),
+            'total_won': summary.get('total_won', 0),
+            'total_lost': summary.get('total_lost', 0),
+            'total_leads': summary.get('total_leads', 0),
+            'total_opportunities': summary.get('total_opportunities', 0),
+            'avg_win_rate': summary.get('overall_win_rate', 0),
+            'avg_conversion_rate': summary.get('overall_conversion_rate', 0),
+            # Detail data for table
+            'salesperson_performance': detail_data,
+            # Chart data - using variable names that match template
+            'labels_json': json.dumps(chart_data.get('labels', [])),
+            'revenues_json': json.dumps(chart_data.get('revenues', [])),
+            'won_rates_json': json.dumps(chart_data.get('win_rates', [])),
+            'conversion_rates_json': json.dumps(chart_data.get('conversion_rates', [])),
+            # Quotation data placeholders (simplified - no sale.order dependency)
+            'quotation_labels_json': json.dumps(chart_data.get('labels', [])),
+            'quotation_counts_json': json.dumps([0] * len(chart_data.get('labels', []))),
+            'quotation_amounts_json': json.dumps([0] * len(chart_data.get('labels', []))),
+            'json': json,
+        }
+        return request.render('looker_studio.report_sales_performance_template_v2', context)

@@ -818,3 +818,235 @@ class LookerActivityReport(models.Model):
         }
 
 
+class LookerSalesPerformanceReport(models.Model):
+    """Report for Sales Team Performance Analysis - grouped by salesperson."""
+
+    _name = 'looker_studio.sales_performance_report'
+    _description = 'Looker Studio - Sales Performance Report'
+
+    name = fields.Char(required=True)
+    domain = fields.Text(string='Domain', help='Python literal list domain')
+    limit = fields.Integer(string='Limit', default=1000)
+    
+    time_filter = fields.Selection([
+        ('last_3_months', '3 tháng gần nhất'),
+        ('last_6_months', '6 tháng gần nhất'),
+        ('this_year', 'Năm nay'),
+        ('custom', 'Tùy chọn'),
+    ], string='Time Filter', default='this_year')
+    
+    date_from = fields.Date(string='Từ ngày')
+    date_to = fields.Date(string='Đến ngày')
+    
+    # Group by mode: all or specific salesperson
+    group_by_mode = fields.Selection([
+        ('all', 'Tất cả nhân viên'),
+        ('specific', 'Nhân viên cụ thể'),
+    ], string='Group By', default='all', required=True)
+    
+    # Group by specific salesperson (only used when group_by_mode = 'specific')
+    salesperson_id = fields.Many2one('res.users', string='Chọn nhân viên', help='Chọn nhân viên cụ thể để xem chi tiết.')
+    
+    description = fields.Text(string='Description', default='Báo cáo hiệu suất bán hàng theo nhân viên')
+
+    def _eval_domain(self):
+        if not self.domain:
+            return []
+        try:
+            return safe_eval(self.domain)
+        except Exception:
+            return []
+            
+    def _get_time_domain(self):
+        today = fields.Date.context_today(self)
+        if isinstance(today, str):
+            today = datetime.strptime(today, '%Y-%m-%d').date()
+        
+        start_date = None
+        end_date = today
+        
+        if self.time_filter == 'last_3_months':
+            start_date = today - relativedelta(months=3)
+        elif self.time_filter == 'last_6_months':
+            start_date = today - relativedelta(months=6)
+        elif self.time_filter == 'this_year':
+            start_date = today.replace(month=1, day=1)
+            end_date = today.replace(month=12, day=31)
+        elif self.time_filter == 'custom':
+            start_date = self.date_from
+            end_date = self.date_to
+            
+        if start_date and end_date:
+            return [('create_date', '>=', start_date), ('create_date', '<=', end_date)]
+        return []
+
+    def get_salesperson_performance(self, additional_domain=None):
+        """Get comprehensive performance data for each salesperson"""
+        self.ensure_one()
+        Model = self.env['crm.lead']
+        domain = self._eval_domain()
+        time_domain = self._get_time_domain()
+        domain = domain + time_domain
+        if additional_domain:
+            domain = domain + additional_domain
+        
+        # Filter by specific salesperson if mode is 'specific' and salesperson is selected
+        if self.group_by_mode == 'specific' and self.salesperson_id:
+            domain = domain + [('user_id', '=', self.salesperson_id.id)]
+
+        # Get all salespeople (users with leads/opportunities)
+        all_users_data = Model.with_context(active_test=False).read_group(
+            domain,
+            ['user_id'],
+            ['user_id'],
+            lazy=False
+        )
+
+        salespeople = {}
+        for g in all_users_data:
+            user = g.get('user_id')
+            if user:
+                user_id, user_name = user
+                salespeople[user_id] = {
+                    'id': user_id,
+                    'name': user_name,
+                    'leads': 0,
+                    'opportunities': 0,
+                    'won': 0,
+                    'lost': 0,
+                    'won_revenue': 0,
+                    'pipeline_revenue': 0,
+                    'lead_to_opp_rate': 0,
+                    'win_rate': 0,
+                }
+
+        # Count Leads by salesperson
+        lead_domain = domain + [('type', '=', 'lead')]
+        lead_groups = Model.read_group(lead_domain, ['user_id'], ['user_id'], lazy=False)
+        for g in lead_groups:
+            user = g.get('user_id')
+            if user and user[0] in salespeople:
+                salespeople[user[0]]['leads'] = g.get('__count', 0)
+
+        # Count Opportunities by salesperson
+        opp_domain = domain + [('type', '=', 'opportunity')]
+        opp_groups = Model.read_group(opp_domain, ['user_id', 'expected_revenue:sum'], ['user_id'], lazy=False)
+        for g in opp_groups:
+            user = g.get('user_id')
+            if user and user[0] in salespeople:
+                salespeople[user[0]]['opportunities'] = g.get('__count', 0)
+                salespeople[user[0]]['pipeline_revenue'] = g.get('expected_revenue', 0) or 0
+
+        # Count Won by salesperson
+        won_domain = opp_domain + [('stage_id.is_won', '=', True)]
+        won_groups = Model.read_group(won_domain, ['user_id', 'expected_revenue:sum'], ['user_id'], lazy=False)
+        for g in won_groups:
+            user = g.get('user_id')
+            if user and user[0] in salespeople:
+                salespeople[user[0]]['won'] = g.get('__count', 0)
+                salespeople[user[0]]['won_revenue'] = g.get('expected_revenue', 0) or 0
+
+        # Count Lost by salesperson
+        lost_domain = domain + [('type', '=', 'opportunity'), ('active', '=', False)]
+        lost_groups = Model.with_context(active_test=False).read_group(lost_domain, ['user_id'], ['user_id'], lazy=False)
+        for g in lost_groups:
+            user = g.get('user_id')
+            if user and user[0] in salespeople:
+                salespeople[user[0]]['lost'] = g.get('__count', 0)
+
+        # Calculate rates
+        for sp in salespeople.values():
+            total_records = sp['leads'] + sp['opportunities'] + sp['lost']
+            total_decided = sp['won'] + sp['lost']
+            
+            # Lead to Opportunity rate
+            if sp['leads'] > 0:
+                sp['lead_to_opp_rate'] = round((sp['opportunities'] + sp['lost']) / (sp['leads'] + sp['opportunities'] + sp['lost']) * 100, 1)
+            
+            # Win rate (from decided opportunities)
+            if total_decided > 0:
+                sp['win_rate'] = round(sp['won'] / total_decided * 100, 1)
+
+        # Sort by won_revenue descending
+        result = sorted(salespeople.values(), key=lambda x: x['won_revenue'], reverse=True)
+
+        return result
+
+    def get_summary_data(self, additional_domain=None):
+        """Get overall summary KPIs - filtered by salesperson if selected"""
+        self.ensure_one()
+        Model = self.env['crm.lead']
+        domain = self._eval_domain()
+        time_domain = self._get_time_domain()
+        domain = domain + time_domain
+        if additional_domain:
+            domain = domain + additional_domain
+        
+        # Filter by specific salesperson if mode is 'specific' and salesperson is selected
+        if self.group_by_mode == 'specific' and self.salesperson_id:
+            domain = domain + [('user_id', '=', self.salesperson_id.id)]
+
+        lead_count = Model.search_count(domain + [('type', '=', 'lead')])
+        opp_count = Model.search_count(domain + [('type', '=', 'opportunity')])
+        
+        won_domain = domain + [('type', '=', 'opportunity'), ('stage_id.is_won', '=', True)]
+        won_count = Model.search_count(won_domain)
+        won_revenue = Model.read_group(won_domain, ['expected_revenue:sum'], [])
+        total_won_revenue = won_revenue[0].get('expected_revenue', 0) if won_revenue else 0
+        
+        lost_domain = domain + [('type', '=', 'opportunity'), ('active', '=', False)]
+        lost_count = Model.with_context(active_test=False).search_count(lost_domain)
+        
+        total_decided = won_count + lost_count
+        total_records = lead_count + opp_count + lost_count
+        
+        return {
+            'total_leads': lead_count,
+            'total_opportunities': opp_count,
+            'total_won': won_count,
+            'total_lost': lost_count,
+            'total_won_revenue': total_won_revenue or 0,
+            'overall_win_rate': round(won_count / total_decided * 100, 1) if total_decided > 0 else 0,
+            'overall_conversion_rate': round((opp_count + lost_count) / total_records * 100, 1) if total_records > 0 else 0,
+        }
+
+    def get_chart_data(self, additional_domain=None):
+        """Get chart data for visualization"""
+        salespeople = self.get_salesperson_performance(additional_domain)
+        
+        # Prepare data for charts
+        labels = [sp['name'] for sp in salespeople[:15]]  # Top 15
+        won_counts = [sp['won'] for sp in salespeople[:15]]
+        lost_counts = [sp['lost'] for sp in salespeople[:15]]
+        revenues = [sp['won_revenue'] for sp in salespeople[:15]]
+        win_rates = [sp['win_rate'] for sp in salespeople[:15]]
+        conversion_rates = [sp['lead_to_opp_rate'] for sp in salespeople[:15]]
+        
+        colors = [
+            '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b',
+            '#858796', '#5a5c69', '#6610f2', '#fd7e14', '#20c997',
+            '#17a2b8', '#28a745', '#dc3545', '#ffc107', '#6c757d'
+        ]
+
+        return {
+            'labels': labels,
+            'won_counts': won_counts,
+            'lost_counts': lost_counts,
+            'revenues': revenues,
+            'win_rates': win_rates,
+            'conversion_rates': conversion_rates,
+            'colors': colors[:len(labels)],
+        }
+
+    def get_detail_data(self, additional_domain=None):
+        """Get detailed salesperson data for table"""
+        return self.get_salesperson_performance(additional_domain)
+
+    def action_preview(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_url',
+            'url': f'/looker_studio/sales_performance/{self.id}',
+            'target': 'new',
+        }
+

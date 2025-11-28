@@ -76,6 +76,58 @@
         </field>
     </record>
 
+    <!-- Sales Performance Report Views -->
+    <record id="view_looker_sales_report_tree" model="ir.ui.view">
+        <field name="name">looker.sales.report.tree</field>
+        <field name="model">looker_studio.sales_performance_report</field>
+        <field name="arch" type="xml">
+            <list string="Sales Performance Reports">
+                <field name="name"/>
+                <field name="time_filter"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_looker_sales_report_form" model="ir.ui.view">
+        <field name="name">looker.sales.report.form</field>
+        <field name="model">looker_studio.sales_performance_report</field>
+        <field name="arch" type="xml">
+            <form string="Sales Performance Report">
+                <header>
+                    <button name="action_preview" type="object" string="Xem trước" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                    </group>
+                    <group string="Nguồn dữ liệu: CRM &amp; Sales (crm.lead, sale.order)">
+                        <group>
+                            <field name="time_filter"/>
+                            <field name="date_from" invisible="time_filter != 'custom'" required="time_filter == 'custom'"/>
+                            <field name="date_to" invisible="time_filter != 'custom'" required="time_filter == 'custom'"/>
+                        </group>
+                        <group>
+                            <field name="group_by_mode" widget="radio"/>
+                            <field name="salesperson_id" invisible="group_by_mode != 'specific'" required="group_by_mode == 'specific'"/>
+                        </group>
+                    </group>
+                    <separator string="Thông tin báo cáo"/>
+                    <group>
+                        <div class="text-muted">
+                            <p>Báo cáo này sẽ phân tích hiệu suất bán hàng theo từng nhân viên, bao gồm:</p>
+                            <ul>
+                                <li>Số lượng Lead và Opportunity</li>
+                                <li>Tỉ lệ chuyển đổi Lead → Opportunity</li>
+                                <li>Số deals Won/Lost và Win Rate</li>
+                                <li>Doanh thu theo nhân viên</li>
+                            </ul>
+                        </div>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <record id="action_looker_reports" model="ir.actions.act_window">
         <field name="name">Báo cáo CRM</field>
         <field name="res_model">looker_studio.report</field>
@@ -88,8 +140,15 @@
         <field name="view_mode">list,form</field>
     </record>
 
+    <record id="action_looker_sales_reports" model="ir.actions.act_window">
+        <field name="name">Báo cáo Hiệu suất Nhân viên</field>
+        <field name="res_model">looker_studio.sales_performance_report</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
     <menuitem id="menu_looker_root" name="Looker Studio" sequence="20"/>
     <menuitem id="menu_looker_reports" name="Báo cáo CRM" parent="menu_looker_root" action="action_looker_reports" sequence="10"/>
     <menuitem id="menu_looker_activity_reports" name="Báo cáo Hoạt động" parent="menu_looker_root" action="action_looker_activity_reports" sequence="20"/>
+    <menuitem id="menu_looker_sales_reports" name="Báo cáo Hiệu suất NV" parent="menu_looker_root" action="action_looker_sales_reports" sequence="30"/>
 
 </odoo>
