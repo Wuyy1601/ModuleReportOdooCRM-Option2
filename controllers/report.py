@@ -28,12 +28,12 @@ class LookerReportController(http.Controller):
         detail_data = report.get_detail_data()
         
         # New advanced data
-        funnel_data = report.get_funnel_data()
         lost_reason_data = report.get_lost_reason_data()
         pipeline_data = report.get_pipeline_by_stage_data()
         win_loss_trend = report.get_win_loss_trend()
         source_data = report.get_source_analysis()
         deal_metrics = report.get_deal_metrics()
+        customer_data = report.get_customer_data()
 
         context = {
             'report': report,
@@ -45,11 +45,6 @@ class LookerReportController(http.Controller):
             'sums_json': json.dumps(chart_data.get('sum_values', [])),
             'line_labels_json': json.dumps(chart_data.get('line_labels', [])),
             'line_values_json': json.dumps(chart_data.get('line_values', [])),
-            # Funnel data
-            'funnel_data': funnel_data,
-            'funnel_labels_json': json.dumps([s['name'] for s in funnel_data['stages']]),
-            'funnel_values_json': json.dumps([s['count'] for s in funnel_data['stages']]),
-            'funnel_colors_json': json.dumps([s['color'] for s in funnel_data['stages']]),
             # Lost Reason data
             'lost_reason_data': lost_reason_data,
             'lost_labels_json': json.dumps(lost_reason_data.get('labels', [])),
@@ -70,6 +65,11 @@ class LookerReportController(http.Controller):
             'source_revenues_json': json.dumps(source_data.get('revenues', [])),
             # Deal metrics
             'deal_metrics': deal_metrics,
+            # Customer data
+            'customer_data': customer_data,
+            'customer_labels_json': json.dumps(customer_data.get('labels', [])),
+            'customer_counts_json': json.dumps(customer_data.get('counts', [])),
+            'customer_colors_json': json.dumps(customer_data.get('colors', [])),
             'json': json,
         }
         return request.render('looker_studio.report_kpi_template_v3', context)

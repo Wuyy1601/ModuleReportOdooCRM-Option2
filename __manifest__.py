@@ -1,16 +1,16 @@
 {
     'name': 'Looker Studio Reports',
-    'version': '3.5.0',
+    'version': '3.7.0',
     'summary': 'Advanced CRM Analytics & Reporting Dashboard',
     'description': '''
         Comprehensive CRM reporting module with:
-        - Sales Funnel Visualization (Lead → Opportunity → Won)
+        - Main Chart (based on Group By Field)
+        - Detailed Data Table
+        - KPIs (Leads, Opportunities, Customers, Revenue, Deal Size, Rates)
+        - Customer by Level Analysis (Pie Chart)
         - Lost Reason Analysis (Pie Chart)
         - Pipeline Value by Stage
         - Win/Loss Trend over Time
-        - Average Deal Size Metrics
-        - Revenue by Source Analysis
-        - Detailed Data Tables with Filtering
     ''',
     'category': 'Reporting',
     'author': 'Your Name',

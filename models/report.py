@@ -354,82 +354,6 @@ class LookerReport(models.Model):
         records = Model.with_context(active_test=False).search_read(domain, fields_to_read, limit=limit, order='create_date desc')
         return records
 
-    def get_funnel_data(self, additional_domain=None):
-        """Get data for funnel chart based on actual CRM stages"""
-        self.ensure_one()
-        Model = self.env['crm.lead']
-        Stage = self.env['crm.stage']
-        domain = self._eval_domain()
-        time_domain = self._get_time_domain()
-        domain = domain + time_domain
-        if additional_domain:
-            domain = domain + additional_domain
-
-        # Get all stages ordered by sequence
-        all_stages = Stage.search([], order='sequence asc')
-        
-        # Count Leads first
-        lead_domain = domain + [('type', '=', 'lead')]
-        lead_count = Model.search_count(lead_domain)
-        
-        # Count opportunities by each stage
-        opp_domain = domain + [('type', '=', 'opportunity')]
-        
-        # Build funnel data from stages
-        funnel_stages = []
-        colors = ['#6c757d', '#17a2b8', '#ffc107', '#fd7e14', '#007bff', '#28a745', '#20c997', '#6610f2']
-        
-        # Add Leads as first stage
-        funnel_stages.append({
-            'name': 'Leads',
-            'count': lead_count,
-            'color': colors[0],
-            'revenue': 0
-        })
-        
-        # Add each CRM stage with count and revenue
-        total_opp = 0
-        for idx, stage in enumerate(all_stages):
-            stage_domain = opp_domain + [('stage_id', '=', stage.id)]
-            count = Model.search_count(stage_domain)
-            
-            # Get revenue for this stage
-            revenue_data = Model.read_group(stage_domain, ['expected_revenue:sum'], [])
-            revenue = revenue_data[0].get('expected_revenue', 0) if revenue_data else 0
-            
-            total_opp += count
-            
-            funnel_stages.append({
-                'name': stage.name,
-                'count': count,
-                'color': colors[(idx + 1) % len(colors)],
-                'revenue': revenue or 0,
-                'is_won': stage.is_won
-            })
-        
-        # Also count lost opportunities
-        lost_domain = domain + [('type', '=', 'opportunity'), ('active', '=', False)]
-        lost_count = Model.with_context(active_test=False).search_count(lost_domain)
-        lost_revenue_data = Model.with_context(active_test=False).read_group(lost_domain, ['expected_revenue:sum'], [])
-        lost_revenue = lost_revenue_data[0].get('expected_revenue', 0) if lost_revenue_data else 0
-        
-        # Get won count
-        won_stages = Stage.search([('is_won', '=', True)]).ids
-        won_domain = opp_domain + [('stage_id', 'in', won_stages)]
-        won_count = Model.search_count(won_domain)
-        
-        total_opp_all = total_opp + lost_count
-
-        return {
-            'stages': funnel_stages,
-            'lost': {'count': lost_count, 'revenue': lost_revenue or 0},
-            'conversion_rates': {
-                'lead_to_opp': round((total_opp_all / lead_count * 100) if lead_count > 0 else 0, 1),
-                'opp_to_won': round((won_count / total_opp_all * 100) if total_opp_all > 0 else 0, 1),
-                'lead_to_won': round((won_count / lead_count * 100) if lead_count > 0 else 0, 1),
-            }
-        }
-
     def get_lost_reason_data(self, additional_domain=None):
         """Get data for Lost Reason Analysis Pie Chart"""
         self.ensure_one()
@@ -658,6 +582,84 @@ class LookerReport(models.Model):
             'total_opps': total_opps,
             'active_opps': active_opps,
             'won_count': won_count,
+        }
+
+    def get_customer_data(self, additional_domain=None):
+        """Get customer statistics from CRM leads"""
+        self.ensure_one()
+        Model = self.env['crm.lead']
+        domain = self._eval_domain()
+        time_domain = self._get_time_domain()
+        domain = domain + time_domain
+        if additional_domain:
+            domain = domain + additional_domain
+
+        # Get all unique partners from CRM leads
+        # Include both leads and opportunities
+        leads_with_partners = Model.with_context(active_test=False).search(domain + [('partner_id', '!=', False)])
+        partner_ids = leads_with_partners.mapped('partner_id').ids
+        
+        total_customers = len(set(partner_ids))
+        
+        # Get customers by grade/level
+        Partner = self.env['res.partner']
+        partners = Partner.browse(list(set(partner_ids)))
+        
+        # Check if grade_id field exists (from partnership module)
+        has_grade = 'grade_id' in Partner._fields
+        
+        grade_labels = []
+        grade_counts = []
+        grade_colors = [
+            '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b',
+            '#858796', '#5a5c69', '#6610f2', '#fd7e14', '#20c997'
+        ]
+        
+        if has_grade:
+            # Group customers by grade
+            grade_data = {}
+            no_grade_count = 0
+            
+            for partner in partners:
+                grade = partner.grade_id
+                if grade:
+                    if grade.id not in grade_data:
+                        grade_data[grade.id] = {
+                            'name': grade.name,
+                            'count': 0,
+                            'sequence': grade.sequence
+                        }
+                    grade_data[grade.id]['count'] += 1
+                else:
+                    no_grade_count += 1
+            
+            # Sort by sequence
+            sorted_grades = sorted(grade_data.values(), key=lambda x: x.get('sequence', 999))
+            
+            for g in sorted_grades:
+                grade_labels.append(g['name'])
+                grade_counts.append(g['count'])
+            
+            # Add "No Level" at the end if exists
+            if no_grade_count > 0:
+                grade_labels.append('Chưa phân loại')
+                grade_counts.append(no_grade_count)
+        else:
+            # Fallback: just show total
+            grade_labels = ['Tất cả']
+            grade_counts = [total_customers]
+
+        # Calculate percentages
+        total = sum(grade_counts) if grade_counts else 1
+        grade_percentages = [round(c / total * 100, 1) for c in grade_counts]
+
+        return {
+            'total_customers': total_customers,
+            'labels': grade_labels,
+            'counts': grade_counts,
+            'percentages': grade_percentages,
+            'colors': grade_colors[:len(grade_labels)],
+            'has_grade': has_grade,
         }
 
 
