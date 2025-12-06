@@ -52,7 +52,7 @@
     
     <template id="report_kpi_template_v2" name="KPI Report Template V2">
         <!-- Deprecated - use v3 -->
-        <t t-call="looker_studio.report_kpi_template_v3"/>
+        <t t-call="CRM_report.report_kpi_template_v3"/>
     </template>
     
     <template id="report_kpi_template_v3" name="KPI Report Template V3">

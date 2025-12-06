@@ -72,7 +72,7 @@ class LookerReportController(http.Controller):
             'customer_colors_json': json.dumps(customer_data.get('colors', [])),
             'json': json,
         }
-        return request.render('looker_studio.report_kpi_template_v3', context)
+        return request.render('CRM_report.report_kpi_template_v3', context)
 
     @http.route('/looker_studio/activity_report/<int:report_id>', type='http', auth='user', website=True)
     def render_activity_report(self, report_id, **kwargs):
@@ -92,7 +92,7 @@ class LookerReportController(http.Controller):
             'values_json': json.dumps(data.get('values', [])),
             'json': json,
         }
-        return request.render('looker_studio.report_activity_template', context)
+        return request.render('CRM_report.report_activity_template', context)
 
     @http.route('/looker_studio/sales_performance/<int:report_id>', type='http', auth='user', website=True)
     def render_sales_performance_report(self, report_id, **kwargs):
@@ -147,4 +147,4 @@ class LookerReportController(http.Controller):
             'quotation_amounts_json': json.dumps([0] * len(chart_data.get('labels', []))),
             'json': json,
         }
-        return request.render('looker_studio.report_sales_performance_template_v2', context)
+        return request.render('CRM_report.report_sales_performance_template_v2', context)

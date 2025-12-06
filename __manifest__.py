@@ -1,6 +1,6 @@
 {
-    'name': 'Looker Studio Reports',
-    'version': '4.0.0',
+    'name': 'CRM Reports',
+    'version': '4.0.1',
     'summary': 'Advanced CRM Analytics & Reporting Dashboard',
     'description': '''
         Comprehensive CRM reporting module with:
@@ -23,10 +23,10 @@
     ],
     'assets': {
         'web.assets_backend': [
-            'looker_studio/static/src/js/patch_removefacet.js',
+            'CRM_report/static/src/js/patch_removefacet.js',
         ],
         'web.assets_web': [
-            'looker_studio/static/src/js/patch_removefacet.js',
+            'CRM_report/static/src/js/patch_removefacet.js',
         ],
     },
     'installable': True,

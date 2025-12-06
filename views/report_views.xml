@@ -146,7 +146,7 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <menuitem id="menu_looker_root" name="Looker Studio" sequence="20"/>
+    <menuitem id="menu_looker_root" name="CRM Reports" sequence="20"/>
     <menuitem id="menu_looker_reports" name="Báo cáo CRM" parent="menu_looker_root" action="action_looker_reports" sequence="10"/>
     <menuitem id="menu_looker_activity_reports" name="Báo cáo Hoạt động" parent="menu_looker_root" action="action_looker_activity_reports" sequence="20"/>
     <menuitem id="menu_looker_sales_reports" name="Báo cáo Hiệu suất NV" parent="menu_looker_root" action="action_looker_sales_reports" sequence="30"/>
